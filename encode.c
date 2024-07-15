@@ -132,7 +132,7 @@ Status copy_bmp_header(FILE *fptr_src_image,FILE *fptr_dest_image)
   fwrite(str,54,1,fptr_dest_image);
   return e_success;
 }
-Status encode_magic_string(const char *magic_string, EncodeInfo *encInfo)
+Status encode_magic_string( char *magic_string, EncodeInfo *encInfo)
 {
   encode_data_to_image(magic_string, strlen(magic_string),encInfo);
   return e_success;
@@ -161,15 +161,49 @@ Status encode_secret_file_extn_size(int size, EncodeInfo *encInfo)
   char str[32];
   fread(str,32,1,encInfo -> fptr_src_image);
   encode_size_to_lsb(size,str);
-  fwrite(str,32,1,encInfo);
+  fwrite(str,32,1,encInfo -> fptr_stego_image);
   return e_success;
 }
-Status encode_secret_to_lsb(int size, char *image_buffer)
+Status encode_size_to_lsb(int size, char *image_buffer)
 {
   for(int i=0;i <32;i++){
     image_buffer[i] = (image_buffer[i] & 0xFE) | ((size >> (31-i))&1);
   }
 }
+
+Status encode_secret_file_extn(char *file_extn, EncodeInfo *encInfo)
+{
+  encode_data_to_image(file_extn,strlen(file_extn), encInfo);
+  return e_success;
+}
+Status encode_secret_file_size(int file_size, EncodeInfo *encInfo)
+{
+  char str[32];
+  fread(str,32,1,encInfo -> fptr_src_image);
+  encode_size_to_lsb(file_size,str);
+  fwrite(str,32,1,encInfo -> fptr_stego_image);
+  return e_success;
+
+}
+Status encode_secret_file_data(EncodeInfo *encInfo)
+{
+  fseek(encInfo -> fptr_secret,0,SEEK_SET);
+  char str[encInfo ->size_secret_file];
+  fread(str,encInfo ->size_secret_file,1,encInfo -> fptr_secret);
+  encode_data_to_image(str,encInfo -> size_secret_file,encInfo);
+  return e_success;
+}
+
+Status copy_remaining_img_data(EncodeInfo *encInfo)
+{
+  char ch;
+  while(fread(&ch, 1,1,encInfo -> fptr_src_image) > 0 )
+  {
+    fwrite(&ch, 1,1, encInfo -> fptr_stego_image);
+    return e_success;
+  }
+}
+
 Status do_encoding(EncodeInfo *encInfo)
 {
 	//rest of all func calls will be made here
@@ -189,6 +223,37 @@ Status do_encoding(EncodeInfo *encInfo)
           if(encode_secret_file_extn_size(strlen(encInfo -> extn_secret_file),encInfo) == e_success)
           {
             printf("Encoding secret file extn size is a success\n");
+            if(encode_secret_file_extn(encInfo-> extn_secret_file,encInfo)==e_success)
+            {
+              printf("Encoded secret file extn successfuly\n");
+              if(encode_secret_file_size(encInfo -> size_secret_file, encInfo) == e_success)
+              {
+                printf("Encoded secret file size successufully\n");
+                if(encode_secret_file_data(encInfo)==e_success)
+                {
+                  printf("Encoded secret file data successfully\n");
+                  if(copy_remaining_img_data(encInfo) ==e_success)
+                  {
+                    printf("Copied remaining Image bytes successfully\n");
+                  }
+                  else
+                  {
+                    printf("Copied remaining Image bytes FAILED");
+                  }
+                }
+                else{
+                  printf("Encoded secret file data FAILED\n");
+                }
+              }
+              else{
+                printf("ENcode secret file size NOT Success\n");
+                return e_failure;
+              }
+            }
+            else
+            {
+              printf("Encoding secret file exten Failed\n");
+            }
           }
           else{
             printf("Encoding secret file extn size failed\n");
