@@ -18,7 +18,9 @@ int main(int argc, char *argv[])
 	}
 	else
 	{
-	printf("Read and Validate encode arguments is NOT sucessfull\n");
+		if(do_encoding(&structure_for_encoding) ==e_success)
+			printf("Encoding is successful\n");
+		printf("Read and Validate encode arguments is NOT sucessfull\n");
 	}
   }
   else if(check_operation_type(argv) == e_decode)
