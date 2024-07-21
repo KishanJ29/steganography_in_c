@@ -1,0 +1,14 @@
+Decoding
+Point 54th position
+Get 8 bytes from stego.bmp, extract LSBs of it and frame a char -> 1st #
+ 2nd *
+Get 32 bytes from stego.bmp, extract LSBs of it and frame an integer -> integer 4
+Get 8 bytes from stego.bmp, extract LSBs of it and frame a char ->
+Get 8 bytes from stego.bmp, extract LSBs of it and frame a char ->
+ repeat this for 4 times
+.txt
+repeat for file_size times
+25 chars
+./a.out -d stego.bmp [decode.txt]
+Get 32 bytes from stego.bmp, extract LSBs of it and frame an integer -> file_size (25)
+Write these 25 char to the decode.txt file
