@@ -18,4 +18,10 @@ typedef enum
     e_unsupported
 } OperationType;
 
+typedef enum
+{
+    d_success,
+    d_failure
+} Status_d;
+
 #endif

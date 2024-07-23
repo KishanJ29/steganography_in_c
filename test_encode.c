@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "encode.h"
 #include "types.h"
+#include "decode.h"
 
 int main(int argc, char *argv[])
 {
@@ -23,8 +24,31 @@ int main(int argc, char *argv[])
 		printf("Read and Validate encode arguments is NOT sucessfull\n");
 	}
   }
-  else if(check_operation_type(argv) == e_decode)
-  	printf("Selected decoding\n");
+    else if (check_operation_type(argv) == e_decode)
+    {
+        printf("Selected decoding\n");
+
+        // Declare structure variables
+        DecodeInfo decInfo;
+        if (read_and_validate_decode_args(argv, &decInfo) == d_success)
+        {
+            printf("Read and validate decode arguments is a success\n");
+
+            // Function call for do decoding
+            if (do_decoding(&decInfo) == d_success)
+            {
+                printf("Decoding is successful\n");
+            }
+            else
+            {
+                printf("Decoding is NOT successful\n");
+            }
+        }  
+        else
+        {
+            printf("Read and validate decode arguments is a failure\n");
+        }
+    } 
   else 
   	printf("Invalid argument");
 	

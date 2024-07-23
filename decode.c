@@ -2,282 +2,233 @@
 #include "decode.h"
 #include "types.h"
 #include "common.h"
-// /* Function Definitions */
+#include <string.h>
+#include <stdlib.h> 
+#include <unistd.h> 
 
-/* Get image size
- * Input: Image file ptr
- * Output: width * height * bytes per pixel (3 in our case)
- * Description: In BMP Image, width is stored in offset 18,
- * and height after that. size is 4 bytes
- */
-uint get_image_size_for_bmp(FILE *fptr_image)
+/* Function Definitions */
+
+// Function definition for read and validate decode args
+Status_d read_and_validate_decode_args(char *argv[], DecodeInfo *decInfo)
 {
-    uint width, height;
-    // Seek to 18th byte
-    fseek(fptr_image, 18, SEEK_SET);
-
-    // Read the width (an int)
-    fread(&width, sizeof(int), 1, fptr_image);
-    printf("width = %u\n", width);
-
-    // Read the height (an int)
-    fread(&height, sizeof(int), 1, fptr_image);
-    printf("height = %u\n", height);
-
-    // Return image capacity
-    return width * height * 3;
-}
-/* 
- * Get File pointers for i/p and o/p files
- * Inputs: Src Image file, Secret file and
- * Stego Image file
- * Output: FILE pointer for above files
- * Return Value: e_success or e_failure, on file errors
- */
-Status open_files(DecodeInfo *decoinfo)
-{
-    // Src Image file
-    
-    // printf("\nthe value is give here \n%s",decoinfo->src_image_fname);
-    decoinfo->fptr_src_image = fopen(decoinfo->src_image_fname, "r");
-    // Do Error handling
-    if (decoinfo->fptr_src_image == NULL)
+    if (strcmp(strstr(argv[2], "."), ".bmp") == 0)
     {
-    	perror("fopen");
-    	fprintf(stderr, "ERROR: Unable to open file Source File %s\n", decoinfo->src_image_fname);
-
-    	return e_failure;
+        decInfo->d_src_image_fname = argv[2];
     }
-
-    // Secret file
-    decoinfo->fptr_secret = fopen(decoinfo->secret_fname, "r");
-    // Do Error handling
-    if (decoinfo->fptr_secret == NULL)
-    {
-    	perror("fopen");
-    	fprintf(stderr, "ERROR: Unable to open file %s\n", decoinfo->secret_fname);
-
-    	return e_failure;
-    }
-
-    // Stego Image file
-    decoinfo->fptr_stego_image = fopen(decoinfo->stego_image_fname, "w");
-    // Do Error handling
-    if (decoinfo->fptr_stego_image == NULL)
-    {
-    	perror("fopen");
-    	fprintf(stderr, "ERROR: Unable to open file %s\n", decoinfo->stego_image_fname);
-
-    	return e_failure;
-    }
-
-    // No failure return e_success
-    return e_success;
-}
-Status read_and_validate_encode_args(char *argv[],DecodeInfo *decoinfo)
-{
-   if(strcmp(strstr(argv[2],"."),".bmp")==0)
-   {
-      // printf("\nCHECK THERE %s\n",argv[2]);
-      decoinfo -> src_image_fname = argv[2];
-     }
-     else
-      return e_failure;
-      
-   if(strcmp(strstr(argv[3],"."),".txt")==0)
-   {
-    //  printf("\nCHECK THERE secret %s\n",argv[3]);
-     decoinfo -> secret_fname = argv[3];
-     }
-     else
-      return e_failure;
-      
-   if(argv[4] != NULL)
-      decoinfo -> stego_image_fname = argv[4];
     else
-      decoinfo -> stego_image_fname = "stego.bmp";
-
-    // printf("\nCHECK THERE source %s\n",decoinfo -> src_image_fname);
-    // printf("\nCHECK THERE source %s\n",decoinfo -> secret_fname);
-    // printf("\nCHECK THERE source %s\n",decoinfo -> stego_image_fname);
-
-
-  return e_success;    
- }
-Status check_capacity(DecodeInfo *decoinfo)
-{
-	decoinfo -> image_capacity =	get_image_size_for_bmp(decoinfo -> fptr_src_image); //sizepf beautiful.bmp
-	decoinfo -> size_secret_file = get_file_size(decoinfo -> fptr_secret); //size of secret.txct
-  // printf("\nImage cap %lu",decoinfo -> image_capacity);
-  // printf("\n Secrete cap %lu",decoinfo -> size_secret_file);
-	if(decoinfo -> image_capacity> (54 +16 +32 + 32 + (decoinfo -> size_secret_file*8)))
-		return e_success;
-	else
-		return e_failure;		
+        return d_failure;
+    if (argv[3] != NULL)
+        decInfo->d_secret_fname = argv[3];
+    else
+        decInfo->d_secret_fname = "decode.txt";
+    return d_success;
 }
 
-uint get_file_size(FILE *fptr)
+// Function definition for open files for decoding
+Status_d open_files_d(DecodeInfo *decInfo)
 {
-	fseek(fptr, 0 , SEEK_END);
-	return ftell(fptr);
-}
+    //Stego Image file
+    decInfo->fptr_d_src_image = fopen(decInfo->d_src_image_fname, "r");
 
-Status copy_bmp_header(FILE *fptr_src_image,FILE *fptr_dest_image)
-{
-  char str[54];
-  fseek(fptr_src_image,0,SEEK_SET);
-  fread(str,54,1,fptr_src_image);
-  fwrite(str,54,1,fptr_dest_image);
-  return e_success;
-}
-Status encode_magic_string( char *magic_string, DecodeInfo *decoinfo)
-{
-  encode_data_to_image(magic_string, strlen(magic_string),decoinfo);
-  return e_success;
-}
+    //Do Error handling
+    if (decInfo->fptr_d_src_image == NULL)
+    {
+        perror("fopen");
+        fprintf(stderr, "ERROR: Unable to open file %s\n", decInfo->d_src_image_fname);
+        return d_failure;
+    }
+    //Dest file
+    decInfo->fptr_d_secret = fopen(decInfo->d_secret_fname, "w");
 
-Status encode_data_to_image(char *data, int size, DecodeInfo *decoinfo)
-{
-  for(int i =0;i<size;i++){
-    fread(decoinfo -> image_data,8,1, decoinfo -> fptr_src_image); //read 8 bytes of data from .bmp file
-    encode_byte_to_lsb(data[i], decoinfo -> image_data); //hide 1 byte in 8 byte
-    fwrite(decoinfo -> image_data , 8, 1, decoinfo -> fptr_stego_image); // write the encoded 8 bytes
+    //Do Error handling
+    if (decInfo->fptr_d_secret == NULL)
+    {
+        perror("fopen");
+        fprintf(stderr, "ERROR: Unable to open file %s\n", decInfo->d_secret_fname);
+        return d_failure;
     }
 
-}
-Status encode_byte_to_lsb(char data,char *image_buffer)
-{
-  for(int i = 0; i< 8 ; i++)
-  {
-    image_buffer[i] = (image_buffer[i] & 0xFE) | ((data >> (7-i)) & 1); //clear the lsb of image byte and replace with data bit and subsequnetly substitue
-  }
+    // If no failure then return e_success
+    return d_success;
 }
 
-Status encode_secret_file_extn_size(int size, DecodeInfo *decoinfo)
+// Function definition for decode magic string
+Status_d decode_magic_string(DecodeInfo *decInfo)
 {
-  // encode a integer -> 32 bytes
-  char str[32];
-  fread(str,32,1,decoinfo -> fptr_src_image);
-  encode_size_to_lsb(size,str);
-  fwrite(str,32,1,decoinfo -> fptr_stego_image);
-  return e_success;
-}
-Status encode_size_to_lsb(int size, char *image_buffer)
-{
-  for(int i=0;i <32;i++){
-    image_buffer[i] = (image_buffer[i] & 0xFE) | ((size >> (31-i))&1);
-  }
+    fseek(decInfo->fptr_d_src_image, 54, SEEK_SET);
+    int i = strlen(MAGIC_STRING);
+
+    decInfo->magic_data = malloc(strlen(MAGIC_STRING) + 1);
+    decode_data_from_image(strlen(MAGIC_STRING), decInfo->fptr_d_src_image, decInfo);
+
+    decInfo->magic_data[i] = '\0';
+
+    if (strcmp(decInfo->magic_data, MAGIC_STRING) == 0)
+        return d_success;
+    else
+        return d_failure;
 }
 
-Status encode_secret_file_extn(char *file_extn, DecodeInfo *decoinfo)
+// Function definition for decoding data fom image
+Status_d decode_data_from_image(int size, FILE *fptr_d_src_image, DecodeInfo *decInfo)
 {
-  encode_data_to_image(file_extn,strlen(file_extn), decoinfo);
-  return e_success;
-}
-Status encode_secret_file_size(int file_size, DecodeInfo *decoinfo)
-{
-  char str[32];
-  fread(str,32,1,decoinfo -> fptr_src_image);
-  encode_size_to_lsb(file_size,str);
-  fwrite(str,32,1,decoinfo -> fptr_stego_image);
-  return e_success;
-
-}
-Status encode_secret_file_data(DecodeInfo *decoinfo)
-{
-  fseek(decoinfo -> fptr_secret,0,SEEK_SET);
-  char str[decoinfo ->size_secret_file];
-  fread(str,decoinfo ->size_secret_file,1,decoinfo -> fptr_secret);
-  encode_data_to_image(str,decoinfo -> size_secret_file,decoinfo);
-  return e_success;
+    int i;
+    char str[8];
+    for (i = 0; i < size; i++)
+    {
+        fread(str, 8, sizeof(char), fptr_d_src_image);
+        decode_byte_from_lsb(&decInfo->magic_data[i], str);
+    }
+    return d_success;
 }
 
-Status copy_remaining_img_data(DecodeInfo *decoinfo)
+// Function definition for decode byte from lsb
+Status_d decode_byte_from_lsb(char *data, char *image_buffer)
 {
-  char ch;
-  while(fread(&ch, 1,1,decoinfo -> fptr_src_image) > 0 )
-  {
-    fwrite(&ch, 1,1, decoinfo -> fptr_stego_image);
-    return e_success;
-  }
+    int bit = 7;
+    unsigned char ch = 0x00;
+    for (int i = 0; i < 8; i++)
+    {
+        ch = ((image_buffer[i] & 0x01) << bit--) | ch;
+    }
+    *data = ch;
+    return d_success;
 }
 
-Status do_decoding(DecodeInfo *decoinfo)
+// Function definition for decode file extn size
+Status_d decode_file_extn_size(int size, FILE *fptr_d_src_image)
 {
-	//rest of all func calls will be made here
-	if (open_files(decoinfo) == e_success)
-	{
-		printf("Successfully openned all files \n");
-		if( check_capacity(decoinfo) == e_success)
-		{
-			printf("capcity check done\n");
-      if(copy_bmp_header(decoinfo ->fptr_src_image, decoinfo ->fptr_stego_image)==e_success)
-      {
-        printf("Copy bmp header is a sucess\n");
-        if(encode_magic_string(MAGIC_STRING,decoinfo) == e_success)
+    char str[32];
+    int length;
+
+    fread(str, 32, sizeof(char), fptr_d_src_image);
+    decode_size_from_lsb(str, &length);
+
+    if (length == size)
+        return d_success;
+    else
+        return d_failure;
+}
+
+// Function definition decode size from lsb
+Status_d decode_size_from_lsb(char *buffer, int *size)
+{
+    int j = 31;
+    int num = 0x00;
+    for (int i = 0; i < 32; i++)
+    {
+        num = ((buffer[i] & 0x01) << j--) | num;
+    }
+    *size = num;
+}
+
+// Function definition for decode secret file extn
+Status_d decode_secret_file_extn(char *file_ext, DecodeInfo *decInfo)
+{
+    file_ext = ".txt";
+    int i = strlen(file_ext);
+    decInfo->d_extn_secret_file = malloc(i + 1);
+    decode_extension_data_from_image(strlen(file_ext), decInfo->fptr_d_src_image, decInfo);
+
+    decInfo->d_extn_secret_file[i] = '\0';
+
+    if (strcmp(decInfo->d_extn_secret_file, file_ext) == 0)
+        return d_success;
+    else
+        return d_failure;
+}
+
+// Function definition decode extension data from image
+Status_d decode_extension_data_from_image(int size, FILE *fptr_d_src_image, DecodeInfo *decInfo)
+{
+    for (int i = 0; i < size; i++)
+    {
+        fread(decInfo->d_src_image_fname, 8, 1, fptr_d_src_image);
+        decode_byte_from_lsb(&decInfo->d_extn_secret_file[i], decInfo->d_src_image_fname);
+    }
+    return d_success;
+}
+
+// Function definition for decode secret file size
+Status_d decode_secret_file_size(int file_size, DecodeInfo *decInfo)
+{
+    char str[32];
+    fread(str, 32, sizeof(char), decInfo->fptr_d_src_image);
+    decode_size_from_lsb(str, &file_size);
+    decInfo->size_secret_file = file_size;
+    //printf("%d\n", file_size);
+
+    return d_success;
+}
+
+// Function definition for decode secret file data
+Status_d decode_secret_file_data(DecodeInfo *decInfo)
+{
+    char ch;
+    for (int i = 0; i < decInfo->size_secret_file; i++)
+    {
+        fread (decInfo->d_src_image_fname, 8, sizeof(char), decInfo->fptr_d_src_image);
+        decode_byte_from_lsb(&ch, decInfo->d_src_image_fname);
+        fputc(ch, decInfo->fptr_d_secret);
+    }
+    return d_success;
+}
+
+// Function definition for do decoding
+Status_d do_decoding(DecodeInfo *decInfo)
+{
+    if (open_files_d(decInfo) == d_success)
+    {
+        printf("Open files is a success\n");
+        if (decode_magic_string(decInfo) == d_success)
         {
-          printf("Magic String Encodded SUccessfully\n");
-          strcpy(decoinfo -> extn_secret_file, strstr(decoinfo -> secret_fname, "."));
-          if(encode_secret_file_extn_size(strlen(decoinfo -> extn_secret_file),decoinfo) == e_success)
-          {
-            printf("Encoding secret file extn size is a success\n");
-            if(encode_secret_file_extn(decoinfo-> extn_secret_file,decoinfo)==e_success)
+            printf("Decoded magic string Successfully\n");
+            if (decode_file_extn_size(strlen(".txt"), decInfo->fptr_d_src_image) == d_success)
             {
-              printf("Encoded secret file extn successfuly\n");
-              if(encode_secret_file_size(decoinfo -> size_secret_file, decoinfo) == e_success)
-              {
-                printf("Encoded secret file size successufully\n");
-                if(encode_secret_file_data(decoinfo)==e_success)
+                printf("Decoded file extension size Succesfully\n");
+                if (decode_secret_file_extn(decInfo->d_extn_secret_file, decInfo) == d_success)
                 {
-                  printf("Encoded secret file data successfully\n");
-                  if(copy_remaining_img_data(decoinfo) ==e_success)
-                  {
-                    printf("Copied remaining Image bytes successfully\n");
-                  }
-                  else
-                  {
-                    printf("Copied remaining Image bytes FAILED");
-                  }
+                    printf("Decoded Secret File Extension Succesfully\n");
+                    if (decode_secret_file_size(decInfo->size_secret_file, decInfo) == d_success)
+                    {
+                        printf("Decoded secret file size Successfully\n");
+                        if (decode_secret_file_data(decInfo) == d_success)
+                        {
+                            printf("Decoded secret file data Succuessfully\n");
+                        }
+                        else
+                        {
+                            printf("Decoding of secret file data is a failure\n");
+                        }
+                    }
+                    else
+                    {
+                        printf("Decode of secret file size is a failure\n");
+                        return d_failure;
+                    }
                 }
-                else{
-                  printf("Encoded secret file data FAILED\n");
+                else
+                {
+                    printf("Decode of Secret file extension is a failure\n");
+                    return d_failure;
                 }
-              }
-              else{
-                printf("ENcode secret file size NOT Success\n");
-                return e_failure;
-              }
             }
             else
             {
-              printf("Encoding secret file exten Failed\n");
+                printf("Decoded of file extension size is a failure\n");
+                return d_failure;
             }
-          }
-          else{
-            printf("Encoding secret file extn size failed\n");
-            return e_failure;
-          }
         }
-        else{
-          printf("Magic String NOT Encoded Successfully\n");
-          return e_failure;
+        else
+        {
+            printf("Decoding of magic string is a failure\n");
+            return d_failure;
         }
-      }
-      else{
-        printf("Copy bmp header is a failure\n");
-        return e_failure;
-      }
-		}
-		else
-		{
-			printf("capcity check failed \n");
-			return e_failure;
-		}
-	}
-	else 
-	{
-		printf("Successfully not openned all files \n");
-		return e_failure;
-	}
-	return e_success;
+    }
+    else
+    {
+        printf("Open files is a failure\n");
+        return d_failure;
+    }
+    return d_success;
 }

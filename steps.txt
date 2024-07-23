@@ -12,3 +12,6 @@ repeat for file_size times
 ./a.out -d stego.bmp [decode.txt]
 Get 32 bytes from stego.bmp, extract LSBs of it and frame an integer -> file_size (25)
 Write these 25 char to the decode.txt file
+
+
+./lsb_steg -e SkeletonCode/beautiful.bmp secret.txt
